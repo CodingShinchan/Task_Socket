@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Live Users</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <style>
+    body {
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    h2 {
+  font-size: 1.5em;
+  color: #333;
+  text-align: center;
+  margin-bottom: 1em;
+}
+
+.scrollable
+{
+  overflow-y: auto;
+  height: auto;
+}
+
+
+    #userList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #userList li {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+      width: 100%;
+      max-width: 500px;
+      text-align: left;
+    }
+    #userList li:hover {
+      
+      background-color: #007bff;
+    }
+    .user-status {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .user-status.online {
+      background-color:greenyellow;
+    }
+    .user-status.offline {
+      background-color: red;
+    }
+    #userDetailsPopup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      width: 90%;
+      max-width: 500px;
+      box-sizing: border-box;
+    }
+    #userDetailsContent {
+      margin-bottom: 20px;
+    }
+    #closePopup {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    #closePopup:hover {
+      background-color: #0056b3;
+    }
+    @media (max-width: 600px) {
+      h2 {
+        font-size: 1.5em;
+      }
+      #userList li {
+        padding: 8px;
+      }
+      #closePopup {
+        padding: 8px;
+      }
+    }
+  </style>
+
+    </style>
+    <h2>Live Users</h2>
+    <div class="scrollable">
+    <ul id="userList"></ul>
+    </div>
+
+    <div id="userDetailsPopup">
+      <div id="userDetailsContent"></div>
+      <button id="closePopup">Close</button>
+    </div>
+
+
+    <script>
+      $(document).ready(function () {
+        console.log("Document ready, attempting to connect to server...");
+        const socket = io();
+    
+        socket.on("connect", function () {
+          console.log("Connected to server:", socket.id);
+          // Re-join the room on reconnect
+          const storedUser = JSON.parse(localStorage.getItem("user"));
+          if (storedUser) {
+            console.log("Stored user found, joining room:", storedUser);
+            socket.emit("joinRoom", storedUser);
+          } else {
+            console.log("No stored user found");
+          }
+        });
+    
+        socket.on("disconnect", function () {
+          console.log("Disconnected from server");
+        });
+    
+        socket.on("updateUserList", function (usersInRoom) {
+          console.log("Received updateUserList event:", usersInRoom);
+          $("#userList").empty();
+    
+          // Manually add a test user to see if it appears
+          $("#userList").append("<li>Live Room Users</li>");
+    
+          for (const email in usersInRoom) {
+            const user = usersInRoom[email];
+            const status = user.socketId ? "online" : "offline";
+            $("#userList").append(
+              `<li data-email="${user.emailId}">
+                <span class="user-status ${status}"></span>
+                ${user.name} (${user.emailId}) - ${status.charAt(0).toUpperCase() + status.slice(1)}
+              </li>`
+            );
+          }
+        });
+    
+        // Handle user list item click
+        $("#userList").on("click", "li", function () {
+          const email = $(this).data("email");
+          console.log("Clicked user:", email);
+          $.ajax({
+            type: "GET",
+            url: `http://localhost:4000/api/users/${email}`,
+            success: function (user) {
+              console.log("Fetched user details:", user);
+              let userDetails = `<p>Email: ${user.emailId}</p>`;
+              userDetails += `<p>Name: ${user.firstName} ${user.lastName}</p>`;
+              userDetails += `<p>Mobile No: ${user.mobileNo}</p>`;
+              userDetails += `<p>Address: ${user.address.street}, ${user.address.city}, ${user.address.state}, ${user.address.country}</p>`;
+              userDetails += `<p>Login ID: ${user.loginId}</p>`;
+              $("#userDetailsContent").html(userDetails);
+              $("#userDetailsPopup").show();
+            },
+            error: function (xhr) {
+              console.log("Error fetching user details:", xhr);
+              alert("Error fetching user details");
+            },
+          });
+        });
+    
+        $("#closePopup").click(function () {
+          $("#userDetailsPopup").hide();
+        });
+    
+        // Handle newly added users
+        socket.on("userAdded", function (userData) {
+          console.log("New user added:", userData);
+          // The updateUserList event will handle updating the UI
+        });
+      });
+    </script>
+    
+  </body>
+</html>
