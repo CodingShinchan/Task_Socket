@@ -161,7 +161,7 @@
           console.log("Clicked user:", email);
           $.ajax({
             type: "GET",
-            url: `http://localhost:4000/api/users/${email}`,
+            url: `https://github.com/CodingShinchan/Task_Socket/api/users/${email}`,
             success: function (user) {
               console.log("Fetched user details:", user);
               let userDetails = `<p>Email: ${user.emailId}</p>`;
