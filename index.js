@@ -16,7 +16,7 @@ const io = socketIO(server);
 val();
 
 app.use(cors({
-  origin: "https://github.com/CodingShinchan/Task_Socket",
+  origin: "https://task-socket.onrender.com",
 })
        );
 app.use(bodyParser.json());
